@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Overrides react-native-share's file provider paths: adds files/Creations
+     (My work) so saved edits can be shared. -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <external-path name="rnshare1" path="Download/" />
+    <cache-path name="rnshare2" path="/" />
+    <files-path name="rnshare3" path="Creations/" />
+</paths>

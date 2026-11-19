@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PlayerView for the native media editor. surface_type=texture_view is
+  critical: a TextureView composites like a normal view, so it keeps
+  showing the LAST rendered frame instead of clearing to black while
+  ExoPlayer switches decoders at a playlist item boundary (merged-clip
+  transitions) — a SurfaceView clears explicitly during that handoff.
+  Same fix already proven in ia_player_view.xml (IAVideoView), applied
+  here per the user's explicit "in between two clips there is small
+  micro second gap which display as black screen" report.
+  use_controller=false — the editor builds its own play/pause/scrubber.
+-->
+<androidx.media3.ui.PlayerView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/media_editor_player_view"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black"
+    app:use_controller="false"
+    app:surface_type="texture_view"
+    app:resize_mode="fit"
+    app:shutter_background_color="@android:color/black" />

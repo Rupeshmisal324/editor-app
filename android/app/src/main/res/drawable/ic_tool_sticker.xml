@@ -1,0 +1,23 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- Editor redesign line icon (24 grid, 1.75 stroke) — same drawing as iOS tool_sticker.svg -->
+  <path
+      android:pathData="M20,13V7a4,4 0 0,0 -4,-4H7a4,4 0 0,0 -4,4v10a4,4 0 0,0 4,4h6M20,13h-4a3,3 0 0,0 -3,3v5M20,13l-7,8M8.5,13c0.9,1 2,1.5 3.5,1.5"
+      android:strokeColor="#FFFFFF"
+      android:strokeAlpha="1"
+      android:strokeWidth="1.75"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"
+      android:fillColor="#00000000" />
+  <path
+      android:pathData="M9,9h0.01M14.5,9h0.01"
+      android:strokeColor="#FFFFFF"
+      android:strokeAlpha="1"
+      android:strokeWidth="2.5"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"
+      android:fillColor="#00000000" />
+</vector>
