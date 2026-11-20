@@ -15,6 +15,7 @@ import Icon from '../components/Icon';
 import { Colors, Fonts, Radius, Spacing, Type } from '../theme';
 import { AppConfig } from '../config';
 import AdBanner from '../ads/AdBanner';
+import { privacyOptionsRequired, showPrivacyOptions } from '../ads/ads';
 import { useToast } from '../components/Toast';
 import {
   buyRemoveAds,
@@ -49,6 +50,11 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [adsRemoved, setAdsRemoved] = useState(isAdsRemoved());
   const [price, setPrice] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
+  const [showAdPrivacy, setShowAdPrivacy] = useState(false);
+
+  useEffect(() => {
+    privacyOptionsRequired().then(setShowAdPrivacy);
+  }, []);
 
   useEffect(() => subscribeAdsRemoved(setAdsRemoved), []);
   useEffect(() => {
@@ -175,6 +181,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           {!!AppConfig.privacyPolicyUrl && (
             <Row label="Privacy policy" chevron onPress={() => open(AppConfig.privacyPolicyUrl)} />
           )}
+          {showAdPrivacy && <Row label="Privacy options" chevron onPress={showPrivacyOptions} />}
           {!!AppConfig.termsUrl && (
             <Row label="Terms of use" chevron onPress={() => open(AppConfig.termsUrl)} />
           )}

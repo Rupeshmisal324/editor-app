@@ -1,6 +1,7 @@
 import mobileAds, {
   AdEventType,
   AdsConsent,
+  AdsConsentPrivacyOptionsRequirementStatus,
   InterstitialAd,
   NativeAd,
   TestIds,
@@ -124,4 +125,26 @@ export const loadNativeAd = async (): Promise<NativeAd | null> => {
   } catch {
     return null;
   }
+};
+
+/**
+ * Google requires a way to change ad consent where the consent form applies
+ * (EU/UK etc.). True when Settings should show the "Privacy options" row.
+ */
+export const privacyOptionsRequired = async (): Promise<boolean> => {
+  try {
+    const info = await AdsConsent.getConsentInfo();
+    return (
+      info.privacyOptionsRequirementStatus === AdsConsentPrivacyOptionsRequirementStatus.REQUIRED
+    );
+  } catch {
+    return false;
+  }
+};
+
+/** Re-opens Google's consent form so the user can change their choice. */
+export const showPrivacyOptions = async () => {
+  try {
+    await AdsConsent.showPrivacyOptionsForm();
+  } catch {}
 };
