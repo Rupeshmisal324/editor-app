@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,6 +23,9 @@ import {
   type Creation,
 } from '../storage/creations';
 import { saveToPhotos, shareMany } from '../media/exportMedia';
+import type { NativeAd } from 'react-native-google-mobile-ads';
+import NativeAdCard from '../ads/NativeAdCard';
+import { adsReady, loadNativeAd, subscribeAdsReady } from '../ads/ads';
 
 export type LibrarySelection = { count: number; cancel: () => void };
 
@@ -38,6 +41,13 @@ type Filter = 'all' | 'image' | 'video';
 
 const COLUMNS = 3;
 const GAP = 3;
+/** A sponsored card after every Nth grid row (N rows = N*3 items), at most MAX. */
+const AD_EVERY_ROWS = 4;
+const MAX_ADS = 3;
+
+type AdRow = { adSlot: number };
+type Row = Creation[] | AdRow;
+const isAdRow = (row: Row): row is AdRow => !Array.isArray(row);
 
 const LibraryTab: React.FC<Props> = ({ active, bottomSpace, onOpen, onCreate, onSelectionChange }) => {
   const insets = useSafeAreaInsets();
@@ -49,6 +59,21 @@ const LibraryTab: React.FC<Props> = ({ active, bottomSpace, onOpen, onCreate, on
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [working, setWorking] = useState(false);
+  const [adsOn, setAdsOn] = useState(adsReady());
+  const [nativeAds, setNativeAds] = useState<NativeAd[]>([]);
+  const adLoading = useRef(false);
+  const mounted = useRef(true);
+  const adsRef = useRef<NativeAd[]>([]);
+  adsRef.current = nativeAds;
+
+  useEffect(() => subscribeAdsReady(setAdsOn), []);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+      adsRef.current.forEach(ad => ad.destroy());
+    },
+    [],
+  );
 
   useEffect(() => {
     const unsubscribe = subscribeCreations(setCreations);
@@ -84,7 +109,7 @@ const LibraryTab: React.FC<Props> = ({ active, bottomSpace, onOpen, onCreate, on
 
   const sections = useMemo(() => {
     const visible = filter === 'all' ? creations : creations.filter(c => c.type === filter);
-    const groups: Array<{ title: string; data: Creation[][] }> = [];
+    const groups: Array<{ title: string; data: Row[] }> = [];
     let current: { title: string; items: Creation[] } | null = null;
     const flush = () => {
       if (!current) return;
@@ -101,8 +126,38 @@ const LibraryTab: React.FC<Props> = ({ active, bottomSpace, onOpen, onCreate, on
       current.items.push(item);
     }
     flush();
-    return groups;
+
+    // Sponsored card slots between rows (rows counted across date groups).
+    let rowCount = 0;
+    let slots = 0;
+    for (const group of groups) {
+      const withAds: Row[] = [];
+      for (const row of group.data) {
+        withAds.push(row);
+        rowCount++;
+        if (rowCount % AD_EVERY_ROWS === 0 && slots < MAX_ADS) withAds.push({ adSlot: slots++ });
+      }
+      group.data = withAds;
+    }
+    // Small Library: one card after the last row.
+    if (slots === 0 && groups.length > 0) groups[groups.length - 1].data.push({ adSlot: slots++ });
+    return { groups, slots };
   }, [creations, filter]);
+
+  // Load native ads one at a time until every slot has one (or one fails).
+  useEffect(() => {
+    if (!adsOn || adLoading.current || nativeAds.length >= sections.slots) return;
+    adLoading.current = true;
+    loadNativeAd().then(ad => {
+      adLoading.current = false;
+      if (!ad) return;
+      if (!mounted.current) {
+        ad.destroy();
+        return;
+      }
+      setNativeAds(prev => [...prev, ad]);
+    });
+  }, [adsOn, nativeAds.length, sections.slots]);
 
   const toggle = useCallback((item: Creation) => {
     setSelected(prev => {
@@ -250,35 +305,41 @@ const LibraryTab: React.FC<Props> = ({ active, bottomSpace, onOpen, onCreate, on
             <Text style={styles.emptyButtonText}>Start editing</Text>
           </Pressable>
         </View>
-      ) : sections.length === 0 ? (
+      ) : sections.groups.length === 0 ? (
         <Text style={[Type.body, styles.noMatch]}>
           No {filter === 'video' ? 'videos' : 'photos'} yet.
         </Text>
       ) : (
         <SectionList
-          sections={sections}
-          keyExtractor={row => row.map(c => c.id).join('|')}
+          sections={sections.groups}
+          keyExtractor={row => (isAdRow(row) ? `ad-${row.adSlot}` : row.map(c => c.id).join('|'))}
           stickySectionHeadersEnabled={false}
           contentContainerStyle={{ paddingBottom: bottomSpace + Spacing.xl }}
           renderSectionHeader={({ section }) => (
             <Text style={styles.sectionTitle}>{section.title}</Text>
           )}
-          renderItem={({ item: row }) => (
-            <View style={styles.row}>
-              {row.map(item => (
-                <MediaTile
-                  key={item.id}
-                  item={item}
-                  width={cell}
-                  height={cell}
-                  selecting={selecting}
-                  selected={selected.has(item.id)}
-                  onPress={onTilePress}
-                  onLongPress={selecting ? undefined : onTileLongPress}
-                />
-              ))}
-            </View>
-          )}
+          renderItem={({ item: row }) => {
+            if (isAdRow(row)) {
+              const ad = nativeAds[row.adSlot];
+              return adsOn && !selecting && ad ? <NativeAdCard ad={ad} /> : null;
+            }
+            return (
+              <View style={styles.row}>
+                {row.map(item => (
+                  <MediaTile
+                    key={item.id}
+                    item={item}
+                    width={cell}
+                    height={cell}
+                    selecting={selecting}
+                    selected={selected.has(item.id)}
+                    onPress={onTilePress}
+                    onLongPress={selecting ? undefined : onTileLongPress}
+                  />
+                ))}
+              </View>
+            );
+          }}
         />
       )}
 

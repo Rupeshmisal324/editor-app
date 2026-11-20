@@ -14,6 +14,16 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Icon from '../components/Icon';
 import { Colors, Fonts, Radius, Spacing, Type } from '../theme';
 import { AppConfig } from '../config';
+import AdBanner from '../ads/AdBanner';
+import { useToast } from '../components/Toast';
+import {
+  buyRemoveAds,
+  getRemoveAdsPrice,
+  isAdsRemoved,
+  purchasesEnabled,
+  restoreRemoveAds,
+  subscribeAdsRemoved,
+} from '../purchases/premium';
 import {
   creationsSizeBytes,
   deleteAllCreations,
@@ -35,6 +45,36 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [count, setCount] = useState(0);
   const [size, setSize] = useState(0);
+  const toast = useToast();
+  const [adsRemoved, setAdsRemoved] = useState(isAdsRemoved());
+  const [price, setPrice] = useState<string | null>(null);
+  const [buying, setBuying] = useState(false);
+
+  useEffect(() => subscribeAdsRemoved(setAdsRemoved), []);
+  useEffect(() => {
+    if (purchasesEnabled && !adsRemoved) getRemoveAdsPrice().then(setPrice);
+  }, [adsRemoved]);
+
+  const buy = async () => {
+    if (buying) return;
+    setBuying(true);
+    const outcome = await buyRemoveAds();
+    setBuying(false);
+    if (outcome.status === 'purchased') toast.show({ message: 'Ads removed. Thank you!', icon: 'check' });
+    else if (outcome.status === 'error') toast.show({ message: outcome.message, tone: 'error' });
+  };
+
+  const restore = async () => {
+    if (buying) return;
+    setBuying(true);
+    const removed = await restoreRemoveAds();
+    setBuying(false);
+    toast.show(
+      removed
+        ? { message: 'Purchase restored. Ads removed.', icon: 'check' }
+        : { message: 'No purchase found for this account.', tone: 'error' },
+    );
+  };
 
   const refresh = useCallback(async () => {
     const list = await loadCreations();
@@ -87,7 +127,27 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.roundButtonSpacer} />
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + Spacing.xxl }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xxl }}>
+        {purchasesEnabled && (
+          <>
+            <Text style={styles.groupLabel}>PREMIUM</Text>
+            <View style={styles.group}>
+              {adsRemoved ? (
+                <Row label="Ads removed" value="Purchased" />
+              ) : (
+                <Row
+                  label="Remove ads"
+                  value={buying ? '…' : price ?? undefined}
+                  chevron
+                  disabled={buying}
+                  onPress={buy}
+                />
+              )}
+              <Row label="Restore purchases" chevron disabled={buying} onPress={restore} />
+            </View>
+          </>
+        )}
+
         <Text style={styles.groupLabel}>STORAGE</Text>
         <View style={styles.group}>
           <Row label="Library" value={`${count} ${count === 1 ? 'item' : 'items'} · ${formatBytes(size)}`} />
@@ -125,6 +185,10 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           Your photos and videos are edited on this device and never uploaded.
         </Text>
       </ScrollView>
+
+      <View style={{ paddingBottom: insets.bottom }}>
+        <AdBanner />
+      </View>
     </View>
   );
 };

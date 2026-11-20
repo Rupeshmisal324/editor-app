@@ -11,4 +11,10 @@ export const AppConfig = {
   /** App Store numeric id, e.g. '1234567890' (for "Rate Editor"). */
   appStoreId: '',
   androidPackage: 'com.editorapp.editor',
+  /**
+   * RevenueCat public SDK keys ("Remove ads" purchase). Empty = purchases off
+   * and the Settings rows stay hidden. iOS key starts "appl_", Android "goog_".
+   */
+  revenueCatIosKey: '',
+  revenueCatAndroidKey: '',
 };

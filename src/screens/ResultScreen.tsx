@@ -27,6 +27,8 @@ import { formatDuration } from '../components/MediaTile';
 import { dateGroupTitle } from '../storage/creations';
 import { useEditFlow } from '../media/useEditFlow';
 import type { RootStackParamList } from '../navigation';
+import AdBanner from '../ads/AdBanner';
+import { maybeShowInterstitial } from '../ads/ads';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Result'>;
 
@@ -58,20 +60,26 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
     if (outcome.ok) {
       setSaved(true);
       toast.show({ message: 'Saved to Photos', icon: 'check' });
+      maybeShowInterstitial();
     } else {
       toast.show({ message: outcome.message, tone: 'error' });
     }
   }, [creation, saving, toast, uri]);
 
-  const onShare = useCallback(() => {
-    if (creation) shareMedia(uri, creation.type);
+  const onShare = useCallback(async () => {
+    if (!creation) return;
+    await shareMedia(uri, creation.type); // resolves when the share sheet closes
+    maybeShowInterstitial();
   }, [creation, uri]);
 
   const onEdit = useCallback(async () => {
     if (!creation) return;
     setPaused(true);
     const next = await editAgain(creation);
-    if (next) navigation.replace('Result', { id: next.id, fresh: true });
+    if (next) {
+      navigation.replace('Result', { id: next.id, fresh: true });
+      maybeShowInterstitial();
+    }
   }, [creation, editAgain, navigation]);
 
   const onDelete = useCallback(() => {
@@ -163,7 +171,7 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
 
       {!!details && <Text style={[Type.caption, styles.details]}>{details}</Text>}
 
-      <View style={[styles.actions, { paddingBottom: insets.bottom + Spacing.md }]}>
+      <View style={styles.actions}>
         <Action
           icon={saved ? 'check' : 'download'}
           label={saved ? 'Saved' : 'Save'}
@@ -173,6 +181,11 @@ const ResultScreen: React.FC<Props> = ({ navigation, route }) => {
         />
         <Action icon="share" label="Share" onPress={onShare} />
         <Action icon="edit" label="Edit" onPress={onEdit} />
+      </View>
+
+      {/* Gap keeps the ad clear of the buttons (AdMob accidental-click rule). */}
+      <View style={[styles.banner, { paddingBottom: insets.bottom }]}>
+        <AdBanner />
       </View>
 
       {busy && (
@@ -248,7 +261,9 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
+    paddingBottom: Spacing.xl,
   },
+  banner: { minHeight: Spacing.md },
   action: {
     flex: 1,
     height: 52,

@@ -10,6 +10,8 @@ import { Colors, Fonts, Spacing, Type } from '../theme';
 import { useEditFlow, type EditSource } from '../media/useEditFlow';
 import type { MediaType } from '../native/MediaEditor/types';
 import type { RootStackParamList } from '../navigation';
+import AdBanner from '../ads/AdBanner';
+import { maybeShowInterstitial } from '../ads/ads';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Main'>;
 type Tab = 'home' | 'library';
@@ -22,13 +24,17 @@ const MainScreen: React.FC<Props> = ({ navigation }) => {
   const [tab, setTab] = useState<Tab>('home');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selection, setSelection] = useState<LibrarySelection | null>(null);
+  const [bannerHeight, setBannerHeight] = useState(0);
   const { busy, startNew } = useEditFlow();
 
   const start = useCallback(
     async (type: MediaType, source: EditSource) => {
       setSheetOpen(false);
       const creation = await startNew(type, source);
-      if (creation) navigation.navigate('Result', { id: creation.id, fresh: true });
+      if (creation) {
+        navigation.navigate('Result', { id: creation.id, fresh: true });
+        maybeShowInterstitial();
+      }
     },
     [navigation, startNew],
   );
@@ -51,12 +57,13 @@ const MainScreen: React.FC<Props> = ({ navigation }) => {
   }, [navigation, selection, tab]);
 
   const bottomInset = Math.max(insets.bottom, Spacing.sm);
+  const adSpace = selection ? 0 : bannerHeight;
 
   return (
     <View style={styles.screen}>
       <View style={[styles.page, tab !== 'home' && styles.hidden]}>
         <HomeTab
-          bottomSpace={TAB_BAR_HEIGHT + bottomInset}
+          bottomSpace={TAB_BAR_HEIGHT + bottomInset + adSpace}
           onStart={start}
           onOpen={id => navigation.navigate('Result', { id })}
           onSeeAll={() => setTab('library')}
@@ -66,12 +73,18 @@ const MainScreen: React.FC<Props> = ({ navigation }) => {
       <View style={[styles.page, tab !== 'library' && styles.hidden]}>
         <LibraryTab
           active={tab === 'library'}
-          bottomSpace={TAB_BAR_HEIGHT + bottomInset}
+          bottomSpace={TAB_BAR_HEIGHT + bottomInset + adSpace}
           onOpen={id => navigation.navigate('Result', { id })}
           onCreate={() => setSheetOpen(true)}
           onSelectionChange={setSelection}
         />
       </View>
+
+      {!selection && (
+        <View style={[styles.banner, { bottom: TAB_BAR_HEIGHT + bottomInset }]}>
+          <AdBanner onHeight={setBannerHeight} />
+        </View>
+      )}
 
       {!selection && (
         <View style={[styles.tabBar, { paddingBottom: bottomInset, height: TAB_BAR_HEIGHT + bottomInset }]}>
@@ -133,6 +146,7 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     paddingTop: 6,
   },
+  banner: { position: 'absolute', left: 0, right: 0 },
   tabButton: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, height: TAB_BAR_HEIGHT - 6 },
   tabLabel: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.textMuted },
   tabLabelActive: { color: Colors.text },

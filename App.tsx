@@ -6,6 +6,8 @@ import { ToastProvider } from './src/components/Toast';
 import { hasOnboarded } from './src/storage/prefs';
 import { loadCreations } from './src/storage/creations';
 import { Colors } from './src/theme';
+import { initAds } from './src/ads/ads';
+import { initPremium } from './src/purchases/premium';
 
 const App = () => {
   // null = still reading the saved flag (a dark frame, same as the launch screen).
@@ -14,6 +16,8 @@ const App = () => {
   useEffect(() => {
     loadCreations();
     hasOnboarded().then(done => setShowOnboarding(!done));
+    // Purchase status first, so paid users never start the ad SDK.
+    initPremium().then(initAds);
   }, []);
 
   return (
