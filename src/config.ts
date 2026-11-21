@@ -17,4 +17,12 @@ export const AppConfig = {
    */
   revenueCatIosKey: '',
   revenueCatAndroidKey: '',
+  /**
+   * Stripe web checkout through RevenueCat Web Billing: the Web Purchase Link
+   * from the RevenueCat dashboard (https://pay.rev.cat/...), with Redemption
+   * Links turned on. Empty = no "Buy on the web" row. Shown only on iPhone in
+   * these App Store countries (Apple allows outside purchase links there).
+   */
+  webCheckoutUrl: '',
+  webCheckoutCountries: ['USA'],
 };

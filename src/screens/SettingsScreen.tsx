@@ -21,9 +21,11 @@ import {
   buyRemoveAds,
   getRemoveAdsPrice,
   isAdsRemoved,
+  openWebCheckout,
   purchasesEnabled,
   restoreRemoveAds,
   subscribeAdsRemoved,
+  webCheckoutAvailable,
 } from '../purchases/premium';
 import {
   creationsSizeBytes,
@@ -51,6 +53,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [price, setPrice] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
   const [showAdPrivacy, setShowAdPrivacy] = useState(false);
+  const [showWebCheckout, setShowWebCheckout] = useState(false);
 
   useEffect(() => {
     privacyOptionsRequired().then(setShowAdPrivacy);
@@ -58,7 +61,10 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
 
   useEffect(() => subscribeAdsRemoved(setAdsRemoved), []);
   useEffect(() => {
-    if (purchasesEnabled && !adsRemoved) getRemoveAdsPrice().then(setPrice);
+    if (purchasesEnabled && !adsRemoved) {
+      getRemoveAdsPrice().then(setPrice);
+      webCheckoutAvailable().then(setShowWebCheckout);
+    }
   }, [adsRemoved]);
 
   const buy = async () => {
@@ -148,6 +154,9 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
                   disabled={buying}
                   onPress={buy}
                 />
+              )}
+              {!adsRemoved && showWebCheckout && (
+                <Row label="Buy on the web" chevron disabled={buying} onPress={openWebCheckout} />
               )}
               <Row label="Restore purchases" chevron disabled={buying} onPress={restore} />
             </View>

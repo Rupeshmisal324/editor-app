@@ -1,6 +1,9 @@
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Purchases, { type CustomerInfo } from 'react-native-purchases';
+import Purchases, {
+  type CustomerInfo,
+  WebPurchaseRedemptionResultType,
+} from 'react-native-purchases';
 import { AppConfig } from '../config';
 
 /**
@@ -102,4 +105,48 @@ export const restoreRemoveAds = async (): Promise<boolean> => {
     apply(await Purchases.restorePurchases());
   } catch {}
   return adsRemoved;
+};
+
+/**
+ * "Buy on the web" (Stripe via RevenueCat Web Billing). iPhone only, and only
+ * in the App Store countries in AppConfig.webCheckoutCountries.
+ */
+export const webCheckoutAvailable = async (): Promise<boolean> => {
+  if (!configured || !AppConfig.webCheckoutUrl || Platform.OS !== 'ios') return false;
+  try {
+    const store = await Purchases.getStorefront();
+    return !!store && AppConfig.webCheckoutCountries.includes(store.countryCode);
+  } catch {
+    return false;
+  }
+};
+
+export const openWebCheckout = () => Linking.openURL(AppConfig.webCheckoutUrl).catch(() => {});
+
+/**
+ * After paying on the web the buyer gets a Redemption Link that opens the app.
+ * Returns null when `url` is not a redemption link.
+ */
+export const redeemWebPurchaseUrl = async (url: string): Promise<PurchaseOutcome | null> => {
+  if (!configured) return null;
+  try {
+    const redemption = await Purchases.parseAsWebPurchaseRedemption(url);
+    if (!redemption) return null;
+    const res = await Purchases.redeemWebPurchase(redemption);
+    switch (res.result) {
+      case WebPurchaseRedemptionResultType.SUCCESS:
+        apply(res.customerInfo);
+        return adsRemoved
+          ? { status: 'purchased' }
+          : { status: 'error', message: 'Purchase found, but it does not include Remove ads.' };
+      case WebPurchaseRedemptionResultType.EXPIRED:
+        return { status: 'error', message: 'This link has expired. A new one was sent to your email.' };
+      case WebPurchaseRedemptionResultType.PURCHASE_BELONGS_TO_OTHER_USER:
+        return { status: 'error', message: 'This purchase was already used on another account.' };
+      default:
+        return { status: 'error', message: 'This purchase link is not valid.' };
+    }
+  } catch {
+    return { status: 'error', message: 'Could not redeem the purchase. Please try again.' };
+  }
 };
