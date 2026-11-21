@@ -33,6 +33,10 @@
       <activity
         android:name="com.intoactive.app.mediaeditor.MediaEditorActivity"
         android:screenOrientation="portrait"
+        android:enableOnBackInvokedCallback="false"
         android:exported="false" />
+      <!-- enableOnBackInvokedCallback=false: the editor handles Back in
+           onBackPressed() (close the add-layer sheet first, then cancel);
+           targetSdk 36 would otherwise skip onBackPressed(). -->
     </application>
 </manifest>
